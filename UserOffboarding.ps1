@@ -30,7 +30,7 @@ function Backup-User {
     $ObjectLocation = Get-ADUser -identity $User -Properties CanonicalName | select-object -ExpandProperty CanonicalName
     Write-Notes -Message "Original Object location: $ObjectLocation"
     <# Backup the current groups to the desktop in a .txt file #>
-    Get-ADPrincipalGroupMembership -Identity $User | Select-Object Name | Write-Notes -FileName "$User ADGroups.txt"
+    Get-ADPrincipalGroupMembership -Identity $User | Select-Object -ExpandProperty Name | Write-Notes -FileName "$User ADGroups.txt"
     Write-Notes -Message "Saved copy of Active Directory Groups $env:userprofile\desktop\$User ADGroups.txt"
 }
 function Set-Password {
