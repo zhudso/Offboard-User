@@ -6,23 +6,31 @@ function Write-Notes{
         [Parameter()]
         $Message,
         [Parameter()]
-        $FileName = "Offboarding Notes",
+        $FileName = "$User Offboarding Notes",
         [Parameter()]
         $FilePath = "$env:USERPROFILE\Desktop"
     )
-    ForEach ($pValue in $pipeValue) {
-        Write-Output $pipeValue
-        <# $pValue | Out-File "$FilePath\$FileName.txt" -Append #>
+    begin {
+        <# Process each value and get them ready as 1 unit for the process block.
+        If no begin block, they'll be processed as single items. #>
     }
+    process {
+        <# Take each item in the pipeline and write it out to a file. #>
+        foreach ($pValue in $pipeValue) {
+            $pValue | Out-File "$FilePath\$FileName.txt" -Append
+        }
+    }
+    end {
+        <# Take the -message parameter and append the message (once) to the file. #>
         $Message | Out-File "$FilePath\$FileName.txt" -Append
+    }
 }
-<# Out-File $env:USERPROFILE\Desktop\"$user ADgroups.txt" #>
 function Backup-User {
     <# Show Original Object Location #>
     $ObjectLocation = Get-ADUser -identity $User -Properties CanonicalName | select-object -ExpandProperty CanonicalName
     Write-Notes -Message "Original Object location: $ObjectLocation"
     <# Backup the current groups to the desktop in a .txt file #>
-    Get-ADPrincipalGroupMembership -Identity $User | Select-Object Name | Out-file $env:userprofile\desktop\$User ADGroups.txt"
+    Get-ADPrincipalGroupMembership -Identity $User | Select-Object Name | Write-Notes -FileName "$User ADGroups.txt"
     Write-Notes -Message "Saved copy of Active Directory Groups $env:userprofile\desktop\$User ADGroups.txt"
 }
 function Set-Password {
@@ -41,7 +49,7 @@ function Move-User {
         Write-Notes -Message "Moved $User to $disabledOU"
     }
     catch {
-        Write-Warning "Unable to move user account. There are multiple or no OU's found on the search condition of 'Mailbox Retention'. Please provide the OU name or manually move the user"
+        Write-Warning "Unable to move user account. There are multiple or no OU's found on the search condition of 'Mailbox Retention'. Please manually move the user to a Disabled OU, I wish I could catch every naming convention"
     }
 }
 
@@ -58,12 +66,27 @@ function Remove-DistributionGroups {
       }
     }
 
+function Hide-GAL {
+    <# For whatever reason, -erroraction doesn't do anything on hiding from GAL #>
+    $OldErrorActionPreference = $global:ErrorActionPreference
+    $global:ErrorActionPreference = "SilentlyContinue"
+    $GALStatus = Set-ADUser -Identity $User -Replace @{msExchHideFromAddressLists="TRUE"} -ErrorAction SilentlyContinue
+    $global:ErrorActionPreference = $OldErrorActionPreference
+    if ($GALStatus -eq "TRUE") {
+        Write-Notes -Message "Hid $User from global address lists in AD"
+    }
+    else {
+        <# Do nothing, could be that msExchHideFromAddressLists isn't found due to it not being installed/configured. #>
+    }
+}
+
 function Offboard-User {
     param (
         [parameter(Mandatory, Position=0)]
         [ValidateScript({get-aduser -id $_})]
         [string]$User
         )
+        try {
         Write-Notes -Message "Logged into server: $env:COMPUTERNAME"
         Backup-User
         Set-ADUser $User -Enabled $false
@@ -71,9 +94,11 @@ function Offboard-User {
         Set-Password
         Move-User
         Remove-DistributionGroups
-        <# For whatever reason, -erroraction doesn't do anything on hiding from GAL #>
-        $OldErrorActionPreference = $global:ErrorActionPreference
-        $global:ErrorActionPreference = "SilentlyContinue"
-        Set-ADUser -Identity $User -Replace @{msExchHideFromAddressLists="TRUE"} -ErrorAction SilentlyContinue
-        $global:ErrorActionPreference = $OldErrorActionPreference
+        Hide-GAL
+        <# DIRSYNC COMMAND: SOON TO COME.. #>
+        Write-Output "Successfully offboarded user. Please check: $FilePath for your notes."
+        }
+        catch {
+            
+        }
 }
