@@ -1,36 +1,3 @@
-
-Skip to content
-Pull requests
-Issues
-Marketplace
-Explore
-@zhudso
-zhudso /
-Offboard-User
-
-1
-0
-
-    0
-
-Code
-Issues
-Pull requests
-Actions
-Projects
-Wiki
-Security
-Insights
-
-    Settings
-
-Offboard-User/UserOffboarding.ps1
-@zhudso
-zhudso Update UserOffboarding.ps1
-Latest commit 9bb0016 9 hours ago
-History
-1 contributor
-104 lines (99 sloc) 4.22 KB
 function Write-Notes{
     [CmdletBinding()]
     param (
@@ -136,18 +103,3 @@ function Offboard-User {
             
         }
 }
-
-    © 2021 GitHub, Inc.
-    Terms
-    Privacy
-    Security
-    Status
-    Docs
-
-    Contact GitHub
-    Pricing
-    API
-    Training
-    Blog
-    About
-
