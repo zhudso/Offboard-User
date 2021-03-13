@@ -1,3 +1,23 @@
+<#
+    .SYNOPSIS
+        Takes pipeline or written input and appends to a file.
+    .DESCRIPTION
+        This function will take mutiple or single pipleline inputs and or written input and appends to a folder/file path that you (optionally) can define.
+        -PipeLine Value: (optional) Takes one or more values stored from the Pipeline and stores it to a file.
+        -Message: (optional) Creates a message you define
+            You can write multiple messages at once with , (Get-Help Write-Notes -Examples) for more information.
+        -FolderPath: (optional) Default folder path: $env:userprofile\desktop
+        -FileName: (optional) Default file name: Offboarding Notes.txt
+    .EXAMPLE
+        Pipeline Example: Get-WmiObject -Class Win32_Processor -ComputerName $env:COMPUTERNAME | Write-Notes -FileName CPUInfo -FilePath $env:userprofile\Desktop\
+        Written  Example: Write-Notes -Message "$env:COMPUTERNAME system information", "Home Drive: $env:HOMEDRIVE", "Logon Server: $env:LOGONSERVER" -FilePath $env:USERPROFILE\Desktop -FileName "$env:COMPUTERNAME Information"
+    .NOTES
+        FunctionName    : Write-Notes
+        Created by      : Zach Hudson
+        Date Coded      : 03/11/2021
+        Modified by     : Zach Hudson
+        Date Modified   : 03/13/2021
+#>
 function Write-Notes{
     [CmdletBinding()]
     param (
@@ -6,9 +26,9 @@ function Write-Notes{
         [Parameter()]
         $Message,
         [Parameter()]
-        $FileName = "$User Offboarding Notes",
+        $FilePath = "$env:USERPROFILE\Desktop",
         [Parameter()]
-        $FilePath = "$env:USERPROFILE\Desktop"
+        $FileName = "$User Offboarding Notes"
     )
     begin {
         <# Process each value and get them ready as 1 unit for the process block.
@@ -21,7 +41,7 @@ function Write-Notes{
         }
     }
     end {
-        <# Take the -message parameter and append the message (once) to the file. #>
+        <# Take the -message parameter and append the message to the file. #>
         $Message | Out-File "$FilePath\$FileName.txt" -Append
     }
 }
