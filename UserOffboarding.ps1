@@ -46,6 +46,7 @@ function Write-Notes{
     }
 }
 function Backup-User {
+    try {
     <# Show Original Object Location #>
     $ObjectLocation = Get-ADUser -identity $User -Properties CanonicalName | select-object -ExpandProperty CanonicalName
     Write-Notes -Message "Original Object location: $ObjectLocation"
@@ -54,27 +55,37 @@ function Backup-User {
     <# Backup the current groups to the desktop in a .txt file #>
     Get-ADPrincipalGroupMembership -Identity $User | Select-Object -ExpandProperty Name | Write-Notes -FileName "$User ADGroups.txt"
     Write-Notes -Message "Saved copy of Active Directory Groups $env:userprofile\desktop\$User ADGroups.txt"
+    Write-Output "Backup-User: Successful"
+    }
+    catch {
+        $Error[0]
+    }
 }
 function Set-Password {
+    try{
     <# Generates a new 8-character password with at least 2 non-alphanumeric character. #>
     Add-Type -AssemblyName System.Web
     $NewPassword = [System.Web.Security.Membership]::GeneratePassword(8,2)
     Write-Notes -Message "Changed user password to: $NewPassword"
     Set-ADAccountPassword -Identity $user -Reset -NewPassword (ConvertTo-SecureString -AsPlainText $NewPassword -Force)
+    Write-Output "Set-Password: Successful"
+    }
+    catch {
+        $Error[0]
+    }
 }
-
 function Move-User {
     $currentOU = Get-ADUser -identity $user -Properties CanonicalName | select-object -expandproperty DistinguishedName
     $disabledOU = Get-ADOrganizationalUnit -Filter 'Name -like "* - Mailbox Retention"'
     try {
         Move-ADObject -Identity "$currentOU" -TargetPath "$disabledOU"
         Write-Notes -Message "Moved $User to $disabledOU"
+        Write-Output "Move-User: Successful"
     }
     catch {
         Write-Warning "Unable to move user account. There are multiple or no OU's found on the search condition of 'Mailbox Retention'. Please manually move the user to a Disabled OU"
     }
 }
-
 function Remove-DistributionGroups {
     $ADGroups = Get-ADPrincipalGroupMembership -Identity $User | Where-Object {$_.Name -ne "Domain Users"} | Select-Object -ExpandProperty Name
     try {
@@ -82,13 +93,13 @@ function Remove-DistributionGroups {
             Remove-ADPrincipalGroupMembership -Identity $User -MemberOf "$ADG" -ErrorAction Stop -Confirm:$false
         }
         Write-Notes -Message "Removed Active Directory groups."
+        Write-Output "Remove-DistributionGroups: Successful"
     } 
     catch {
         Write-Warning "Error possibly due to the fact that the group was re-named at one point and the name and pre-windows 2000 name are no longer the same. (will require manual removal or correction of the names 'making them the same')"
         Write-Output $Error[0]
       }
     }
-
 function Hide-GAL {
     <# For whatever reason, -erroraction doesn't do anything on hiding from GAL #>
     $OldErrorActionPreference = $global:ErrorActionPreference
@@ -98,13 +109,26 @@ function Hide-GAL {
     $global:ErrorActionPreference = $OldErrorActionPreference
     if ($GALStatus -eq "TRUE") {
         Write-Notes -Message "Hid $User from global address lists in AD"
+        Write-Output "Hide-GAL: Successful"
         continue <# If error or returns false, continue through the script as if successful but doesn't document in notes. #>
     }
     else {
         <# Do nothing, could be that msExchHideFromAddressLists isn't found due to it not being installed/configured. #>
     }
 }
-
+function Start-Dirsync {
+    <# Cool script to find the AD sync server
+    Get-ADUser -LDAPFilter "(description=*configured to synchronize to tenant*)" -Properties description | % { $_.description.SubString(142, $_.description.IndexOf(" ", 142) - 142)}
+    May want to create script to check for the dirsync server, create a remote powershell session and run command if it's not the same server currently logged in. #>
+    $DirsyncService = get-service -name AzureADConnectHealthSyncInsights -ErrorAction SilentlyContinue
+    if ($DirsyncService -ne $null) {
+        <# Continue through script. #>} 
+    else { 
+        Start-ADSyncSyncCycle -Policytype Delta
+        Write-Notes -message "Ran Dirsync Command: Start-ADSyncSyncCycle -Policytype Delta"
+        Write-Output "Start-Dirsync: Successful"
+    }
+}
 function Offboard-User {
     param (
         [parameter(Mandatory, Position=0)]
@@ -119,12 +143,12 @@ function Offboard-User {
         Set-Password
         Move-User
         Remove-DistributionGroups
-        Hide-GAL
         Write-Host "Successfully offboarded user."
-        <# DIRSYNC COMMAND: SOON TO COME.. #>
+        Hide-GAL
+        Start-Dirsync
+        Write-Output "Check $env:userprofile\desktop for your notes & AD groups."
         }
         catch {
         Write-Output "Hit the Offboard-User try catch block"
-        Write-Warning $Error[0]
         }
 }
