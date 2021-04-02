@@ -120,13 +120,14 @@ function Start-Dirsync {
     <# Cool script to find the AD sync server
     Get-ADUser -LDAPFilter "(description=*configured to synchronize to tenant*)" -Properties description | % { $_.description.SubString(142, $_.description.IndexOf(" ", 142) - 142)}
     May want to create script to check for the dirsync server, create a remote powershell session and run command if it's not the same server currently logged in. #>
-    $DirsyncService = get-service -name AzureADConnectHealthSyncInsights -ErrorAction SilentlyContinue
-    if ($DirsyncService -ne $null) {
-        <# Continue through script. #>} 
-    else { 
+    $DirsyncService = get-service -name ADSync | Select-Object -ExpandProperty Status -ErrorAction SilentlyContinue
+    if ($DirsyncService -eq "Running") {
         Start-ADSyncSyncCycle -Policytype Delta
         Write-Notes -message "Ran Dirsync Command: Start-ADSyncSyncCycle -Policytype Delta"
         Write-Output "Start-Dirsync: Successful"
+        } 
+    else {
+    <#continue through script#>
     }
 }
 function Offboard-User {
