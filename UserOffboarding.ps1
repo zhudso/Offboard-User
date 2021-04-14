@@ -102,11 +102,10 @@ function Remove-DistributionGroups {
     }
 function Hide-GAL {
     Set-ADUser -Identity $User -Replace @{msExchHideFromAddressLists="TRUE"} -ErrorAction SilentlyContinue
-    $GALStatus = Get-ADUser -id $User -properties * | Select-Object -ExpandProperty msExchHideFromAddressLists
+    $GALStatus = Get-ADUser -id $User -properties * | Select-Object -ExpandProperty msExchHideFromAddressLists -ErrorAction SilentlyContinue
     if ($GALStatus -eq "TRUE") {
         Write-Notes -Message "Hid $User from global address lists in AD"
         Write-Output "Hide-GAL: Successful"
-        continue <# If error or returns false, continue through the script as if successful but doesn't document in notes. #>
     }
     else {
         <# Do nothing, could be that msExchHideFromAddressLists isn't found due to it not being installed/configured. #>
