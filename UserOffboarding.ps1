@@ -101,12 +101,8 @@ function Remove-DistributionGroups {
       }
     }
 function Hide-GAL {
-    <# For whatever reason, -erroraction doesn't do anything on hiding from GAL #>
-    $OldErrorActionPreference = $global:ErrorActionPreference
-    $global:ErrorActionPreference = "SilentlyContinue"
     Set-ADUser -Identity $User -Replace @{msExchHideFromAddressLists="TRUE"} -ErrorAction SilentlyContinue
     $GALStatus = Get-ADUser -id $User -properties * | Select-Object -ExpandProperty msExchHideFromAddressLists
-    $global:ErrorActionPreference = $OldErrorActionPreference
     if ($GALStatus -eq "TRUE") {
         Write-Notes -Message "Hid $User from global address lists in AD"
         Write-Output "Hide-GAL: Successful"
